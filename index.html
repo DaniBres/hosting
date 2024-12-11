@@ -1,1 +1,333 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tabla Responsiva con CRUD</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .table-container {
+            overflow-x: auto;
+            margin-bottom: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            table-layout: auto; /* Deja que las columnas se ajusten automáticamente */
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+            word-wrap: break-word; /* Asegura el ajuste de palabras largas */
+            white-space: normal; /* Permite saltos de línea dentro de la celda */
+            overflow-wrap: break-word; /* Divide palabras largas sin espacios */
+        }
+        th {
+            background-color: #f4f4f9;
+        }
+        button {
+            padding: 5px 10px;
+            margin: 2px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .add-btn {
+            background-color: #28a745;
+            color: white;
+        }
+        .edit-btn {
+            background-color: #007bff;
+            color: white;
+        }
+        .delete-btn {
+            background-color: #dc3545;
+            color: white;
+        }
+        button:hover {
+            opacity: 0.8;
+        }
+
+        .open-modal-btn {
+            background-color: #28a745;
+            color: white;
+        }
+        .open-modal-btn:hover {
+            opacity: 0.8;
+        }
+
+        /* Estilos del modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            width: 90%; /* Ajuste para pantallas pequeñas */
+            max-width: 400px; /* Ancho máximo para pantallas grandes */
+        }
+        .modal-content input {
+            width: 90%;
+            padding: 8px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .modal-content button {
+            width: 45%;
+            margin: 5px;
+        }
+        .accept-btn {
+            background-color: #28a745;
+            color: white;
+        }
+        .cancel-btn {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        @media (max-width: 768px) {
+            table {
+                font-size: 14px; /* Reduce el tamaño de fuente para dispositivos pequeños */
+            }
+            th, td {
+                padding: 6px; /* Reduce el padding en pantallas pequeñas */
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Tabla Responsiva con CRUD</h1>
+    <button type="add-btn" class="open-modal-btn" id="openModalBtn">Agregar Nuevo Item</button>
+    
+    <div class="table-container">
+        <table id="crudTable">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Descripción</th>
+                    <th>Precio</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Filas generadas dinámicamente -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <h3>Agregar item</h3>
+            <input type="text" id="modalField1" placeholder="Descripción" required>
+            <input type="text" id="modalField2" placeholder="Precio" required>
+            <div>
+                <button class="accept-btn" id="acceptBtn">Aceptar</button>
+                <button class="cancel-btn" id="cancelBtn">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        const apiUrl = "https://pruebaapi.somee.com/api/productos"; // Cambia por la URL de tu API
+        const tableBody = document.querySelector("#crudTable tbody");
+        const addRowBtn = document.getElementById("addRowBtn");
+
+        // Función para obtener datos de la API y renderizar la tabla
+        async function fetchData() {
+            try {
+                const response = await fetch(apiUrl);
+                const data = await response.json();
+
+                // Limpia la tabla antes de agregar filas nuevas
+                tableBody.innerHTML = "";
+
+                // Genera las filas de la tabla
+                data.forEach(item => {
+                    addRowToTable(item.id, item.descripcion, item.precio);
+                });
+            } catch (error) {
+                console.error("Error al obtener los datos:", error);
+            }
+        }
+
+        // Función para agregar una fila a la tabla
+        function addRowToTable(id, field1, field2) {
+            const row = document.createElement("tr");
+            row.innerHTML = `
+                <td>${id}</td>
+                <td contenteditable="false">${field1}</td>
+                <td contenteditable="true">${field2}</td>
+                <td>
+                    <button class="edit-btn">Modificar</button>
+                    <button class="delete-btn">Borrar</button>
+                </td>
+            `;
+
+            // Agrega eventos a los botones
+            const editBtn = row.querySelector(".edit-btn");
+            const deleteBtn = row.querySelector(".delete-btn");
+
+            editBtn.addEventListener("click", () => modifyRow(id, row));
+            deleteBtn.addEventListener("click", () => deleteRow(id, row));
+
+            tableBody.appendChild(row);
+        }
+
+        // Función para modificar una fila (Actualizar en la API)
+        async function modifyRow(id, row) {
+            const field1 = row.cells[1].textContent;
+            const field2 = row.cells[2].textContent;
+
+            const data = { descripcion: "No importa este campo", precio: row.cells[2].textContent};
+
+
+            try {
+                const response = await fetch(`${apiUrl}/${id}`, {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(data)
+                });
+ 
+
+                if (response.ok) {
+                    alert("Fila actualizada con éxito");
+                } else {
+                    alert("Error al actualizar la fila");
+                }
+            } catch (error) {
+                console.error("Error al modificar la fila:", error);
+            }
+        }
+
+        // Función para borrar una fila (Eliminar de la API)
+        async function deleteRow(id, row) {
+            if (!confirm("¿Estás seguro de que deseas eliminar esta fila?")) return;
+
+            try {
+                const response = await fetch(`${apiUrl}/${id}`, { method: "DELETE" });
+
+                if (response.ok) {
+                    row.remove();
+                    alert("Fila eliminada con éxito");
+                } else {
+                    alert("Error al eliminar la fila");
+                }
+            } catch (error) {
+                console.error("Error al eliminar la fila:", error);
+            }
+        }
+
+        const openModalBtn = document.getElementById("openModalBtn");
+        const modal = document.getElementById("modal");
+        const acceptBtn = document.getElementById("acceptBtn");
+        const cancelBtn = document.getElementById("cancelBtn");
+
+        const mainField1 = document.getElementById("mainField1");
+        const mainField2 = document.getElementById("mainField2");
+
+        const modalField1 = document.getElementById("modalField1");
+        const modalField2 = document.getElementById("modalField2");
+
+        // Abrir el modal
+        openModalBtn.addEventListener("click", () => {
+            modal.style.display = "flex";
+            modalField1.value = ""; // Limpia los campos
+            modalField2.value = "";
+        });
+
+        // Cerrar el modal sin guardar
+        cancelBtn.addEventListener("click", () => {
+            modal.style.display = "none";
+        });
+
+  
+
+        // Guardar los valores en el formulario principal
+        acceptBtn.addEventListener("click", async() => {
+            const field1Value = modalField1.value.trim();
+            const field2Value = modalField2.value.trim();
+
+            if (field1Value === "" || field2Value === "") {
+                alert("Por favor, complete ambos campos.");
+                return;
+            }
+            
+            // ------------------  NUEVO ---------------------
+            try {
+                const newRow = { descripcion: field1Value, precio: field2Value };
+
+                const response = await fetch(apiUrl, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(newRow)
+                });
+               // console.log(response);
+                
+               if (response.ok) {
+                   fetchData();  
+                   // const data = response.json();
+                   // console.log(data);
+
+                    // addRowToTable(createdRow.id, createdRow.descripcion, createdRow.precio);
+                } else {
+                    alert("Error al agregar la fila");
+                }
+                /*
+                if (response.ok) {
+                    const createdRow = response.json();
+                    addRowToTable(createdRow.id, createdRow.descripcion, createdRow.precio);
+                    console.log(createdRow.id);
+                } else {
+                    alert("Error al agregar la nueva fila");
+                }
+                */
+            } catch (error) {
+                console.log("Error al agregar una nueva fila:", error);
+            }
+            
+
+            // ------------------  FIN NUEVO ---------------------
+            // Hacerrrrrrrrrrrrrrr
+           // mainField1.textContent = field1Value;
+           // mainField2.textContent = field2Value;
+
+            modal.style.display = "none"; // Cerrar el modal
+        });
+
+        // Cerrar el modal haciendo clic fuera del contenido
+        window.addEventListener("click", (event) => {
+            if (event.target === modal) {
+                modal.style.display = "none";
+            }
+        });
+
+        // Cargar datos al cargar la página
+        fetchData();
+    </script>
+</body>
+</html>
